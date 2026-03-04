@@ -15,44 +15,51 @@ jobs:
       PATH: ${{ github.workspace }}/android-sdk/cmdline-tools/latest/bin:$PATH:${{ github.workspace }}/android-sdk/platform-tools:$PATH
 
     steps:
-    # 1️⃣ Baixar o código do repositório
     - name: Checkout repository
       uses: actions/checkout@v3
 
-    # 2️⃣ Configurar Python 3.13
+    # 1️⃣ Instalação de dependências básicas do sistema (sem sudo)
+    - name: Install system dependencies
+      run: |
+        mkdir -p $HOME/.local/bin
+        curl -LO https://raw.githubusercontent.com/git/git/master/contrib/completion/git-prompt.sh || true
+        apt-get update || true
+        apt-get install -y --no-install-recommends unzip wget curl git tar zip openjdk-17-jdk build-essential || true
+
+    # 2️⃣ Configurar Python
     - name: Set up Python 3.13
       uses: actions/setup-python@v4
       with:
         python-version: '3.13'
 
-    # 3️⃣ Instalar dependências do Buildozer
+    # 3️⃣ Instalar Buildozer e dependências Python
     - name: Install Python dependencies
       run: |
         python -m pip install --upgrade pip setuptools wheel
-        pip install buildozer==1.5.0 python-for-android==2023.9.16 cython flask websocket-client kivy
+        pip install buildozer==1.5.0 python-for-android==2023.9.16 cython kivy flask websocket-client
 
-    # 4️⃣ Instalar Android SDK cmdline-tools
+    # 4️⃣ Baixar e configurar Android SDK cmdline-tools
     - name: Install Android SDK cmdline-tools
       run: |
         mkdir -p $ANDROID_SDK_ROOT/cmdline-tools
         cd $ANDROID_SDK_ROOT
-        wget https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip -O cmdline-tools.zip
+        wget -O cmdline-tools.zip https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip
         unzip -q cmdline-tools.zip
         mv cmdline-tools cmdline-tools/latest
         yes | $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager --licenses
 
-    # 5️⃣ Instalar build-tools e plataformas Android
+    # 5️⃣ Instalar Build-tools, Platform-tools e Android platform
     - name: Install build tools and platforms
       run: |
         yes | $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager "platform-tools" "platforms;android-33" "build-tools;34.0.0"
 
-    # 6️⃣ Build APK com Buildozer
+    # 6️⃣ Build APK usando Buildozer
     - name: Build APK
       run: |
         buildozer android debug
         ls -lh bin/
 
-    # 7️⃣ Fazer upload do APK como artefato
+    # 7️⃣ Upload do APK gerado como artifact
     - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
