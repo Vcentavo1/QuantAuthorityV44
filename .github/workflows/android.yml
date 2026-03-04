@@ -4,58 +4,57 @@ on:
   push:
     branches:
       - main
-  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
     env:
+      ANDROID_SDK_ROOT: ${{ github.workspace }}/android-sdk
       ANDROID_HOME: ${{ github.workspace }}/android-sdk
-      ANDROID_NDK_HOME: ${{ github.workspace }}/android-ndk
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.11'
+          python-version: 3.11
 
-      - name: Install system dependencies
+      - name: Install Python dependencies
         run: |
-          sudo apt update
-          sudo apt install -y git wget unzip zip openjdk-17-jdk build-essential
+          python -m pip install --upgrade pip setuptools wheel
+          pip install cython
+          pip install buildozer==1.5.0 python-for-android==2023.9.16
 
-      - name: Install Buildozer, Python-for-Android & Cython
+      - name: Download Android cmdline-tools
         run: |
-          python3 -m pip install --upgrade pip setuptools wheel
-          python3 -m pip install buildozer python-for-android cython
-
-      - name: Install Android SDK Command-line Tools
-        run: |
-          mkdir -p $ANDROID_HOME
-          cd $ANDROID_HOME
+          mkdir -p $ANDROID_SDK_ROOT/cmdline-tools
+          cd $ANDROID_SDK_ROOT
           wget https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip -O cmdline-tools.zip
-          unzip cmdline-tools.zip
+          unzip -q cmdline-tools.zip
           mkdir -p cmdline-tools/latest
-          mv cmdline-tools/* cmdline-tools/latest/
-          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses
-          $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "platform-tools" "platforms;android-33" "build-tools;34.0.0"
+          mv cmdline-tools/cmdline-tools/* cmdline-tools/latest/
 
-      - name: Install Android NDK
+      - name: Accept Android licenses
         run: |
-          mkdir -p $ANDROID_NDK_HOME
-          wget https://dl.google.com/android/repository/android-ndk-r25b-linux.zip
-          unzip android-ndk-r25b-linux.zip -d $ANDROID_NDK_HOME
-          mv $ANDROID_NDK_HOME/android-ndk-r25b/* $ANDROID_NDK_HOME/
+          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses || true
 
-      - name: Build APK
+      - name: Install Build-tools, Platforms, NDK
+        run: |
+          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager \
+            "platform-tools" \
+            "platforms;android-33" \
+            "build-tools;33.0.2" \
+            "ndk;25.2.9519653"
+
+      - name: Build APK with Buildozer
         run: |
           buildozer android debug
+        working-directory: ${{ github.workspace }}
 
-      - name: Upload APK Artifact
+      - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: QuantAuthorityV44-APK
-          path: ./.buildozer/android/platform/build-armeabi-v7a/dists/quantauthority/bin/*.apk
+          path: .buildozer/android/platform/build/dists/quantauthority/bin/*.apk
