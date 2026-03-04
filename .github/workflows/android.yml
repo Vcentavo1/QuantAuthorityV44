@@ -10,39 +10,14 @@ jobs:
     runs-on: ubuntu-22.04
 
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout
+        uses: actions/checkout@v3
 
-      - name: Set up Java
-        uses: actions/setup-java@v3
+      - name: Build with Buildozer
+        uses: ArtemSBulgakov/buildozer-action@v1
         with:
-          distribution: 'temurin'
-          java-version: '17'
-
-      - name: Install Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.10'
-
-      - name: Install system dependencies
-        run: |
-          sudo apt update
-          sudo apt install -y git zip unzip build-essential \
-          libffi-dev libssl-dev libsqlite3-dev \
-          libncurses5 libstdc++6 zlib1g-dev
-
-      - name: Install Buildozer
-        run: |
-          pip install --upgrade pip
-          pip install buildozer cython
-
-      - name: Install Android SDK components
-        run: |
-          yes | sdkmanager --licenses || true
-          sdkmanager "platform-tools" "platforms;android-33" "build-tools;33.0.2"
-
-      - name: Build APK
-        run: |
-          buildozer android debug
+          workdir: .
+          buildozer_version: stable
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
