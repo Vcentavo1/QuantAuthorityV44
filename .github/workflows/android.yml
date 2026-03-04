@@ -21,19 +21,26 @@ jobs:
         with:
           python-version: '3.11'
 
-      # 3️⃣ Build Android APK com Buildozer
-      - name: Build APK
-        uses: ArtemSBulgakov/buildozer-action@v2
-        with:
-          workdir: .
-          buildozer_version: stable
-          command: android debug
-          requirements: python3,kivy,flask,websocket-client
-          android_permissions: INTERNET
+      # 3️⃣ Instalar dependências do sistema
+      - name: Install dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y git python3-pip python3-venv openjdk-17-jdk unzip zip wget
 
-      # 4️⃣ Upload do APK gerado como artifact
+      # 4️⃣ Instalar Buildozer e Python-for-Android
+      - name: Install Buildozer & p4a
+        run: |
+          python3 -m pip install --upgrade pip setuptools wheel
+          python3 -m pip install buildozer python-for-android
+
+      # 5️⃣ Build APK
+      - name: Build APK
+        run: |
+          buildozer android debug
+
+      # 6️⃣ Upload do APK gerado como artifact
       - name: Upload APK Artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: QuantAuthorityV44-APK
           path: ./.buildozer/android/platform/build-armeabi-v7a/dists/quantauthority/bin/*.apk
