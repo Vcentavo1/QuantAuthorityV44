@@ -1,18 +1,14 @@
-name: Build Android APK - Ultra Complete
+name: Build Android APK
 
 on:
   push:
     branches:
       - main
-  workflow_dispatch:
 
 jobs:
-  build:
+  build-apk:
     runs-on: ubuntu-latest
-
-    env:
-      ANDROID_SDK_ROOT: ${{ github.workspace }}/.buildozer/android/platform/android-sdk
-      PATH: ${{ github.workspace }}/.buildozer/android/platform/android-sdk/cmdline-tools/latest/bin:${{ github.workspace }}/.buildozer/android/platform/android-sdk/platform-tools:$PATH
+    timeout-minutes: 60
 
     steps:
     - name: Checkout repository
@@ -21,58 +17,24 @@ jobs:
     - name: Install system dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y python3 python3-venv python3-pip git unzip wget curl zip openjdk-17-jdk tar build-essential
+        sudo apt-get install -y \
+          python3 python3-pip python3-venv git unzip wget curl zip build-essential tar openjdk-17-jdk \
+          libncurses5 libncurses5-dev libstdc++6
 
     - name: Setup Python virtual environment
       run: |
         python3 -m venv venv
         source venv/bin/activate
         pip install --upgrade pip setuptools wheel
+        pip install buildozer==1.5.0 python-for-android
 
-    - name: Install Buildozer and Python-for-Android
+    - name: Build APK with Buildozer
       run: |
         source venv/bin/activate
-        pip install buildozer==1.5.0 python-for-android cython
-
-    - name: Setup Android SDK, NDK, and Build-tools
-      run: |
-        mkdir -p $ANDROID_SDK_ROOT
-        cd $ANDROID_SDK_ROOT
-        wget https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip -O cmdline-tools.zip
-        unzip cmdline-tools.zip -d cmdline-tools
-        rm cmdline-tools.zip
-        mkdir -p cmdline-tools/latest
-        mv cmdline-tools/cmdline-tools/* cmdline-tools/latest/
-        # Instala build-tools, platform-tools, plataformas e NDK
-        yes | cmdline-tools/latest/bin/sdkmanager --sdk_root=$ANDROID_SDK_ROOT \
-          "platform-tools" \
-          "platforms;android-33" \
-          "build-tools;33.0.2" \
-          "ndk;25.2.9519653"
-
-    - name: Accept Android licenses
-      run: yes | cmdline-tools/latest/bin/sdkmanager --licenses
-
-    - name: Check aidl and other executables
-      run: |
-        AIDL="$ANDROID_SDK_ROOT/build-tools/33.0.2/aidl"
-        if [ ! -f "$AIDL" ]; then
-          echo "ERROR: aidl not found!"
-          exit 1
-        fi
-        chmod +x "$AIDL"
-        echo "aidl found and executable"
-
-    - name: Build APK (multi-arch)
-      run: |
-        source venv/bin/activate
-        # Limpa builds anteriores
-        buildozer android clean
-        # Build para armv7 e arm64
-        buildozer android debug deploy run
+        buildozer android debug
 
     - name: Upload APK artifact
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v3
       with:
-        name: apk
+        name: QuantAuthority-debug-apk
         path: bin/*.apk
