@@ -1,4 +1,4 @@
-name: Build Android APK
+name: Build Android APK - Ultra Complete
 
 on:
   push:
@@ -11,57 +11,68 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      ANDROID_SDK_ROOT: ${{ github.workspace }}/android-sdk
-      PATH: ${{ github.workspace }}/android-sdk/cmdline-tools/latest/bin:$PATH:${{ github.workspace }}/android-sdk/platform-tools:$PATH
+      ANDROID_SDK_ROOT: ${{ github.workspace }}/.buildozer/android/platform/android-sdk
+      PATH: ${{ github.workspace }}/.buildozer/android/platform/android-sdk/cmdline-tools/latest/bin:${{ github.workspace }}/.buildozer/android/platform/android-sdk/platform-tools:$PATH
 
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
-    # 1️⃣ Instalação de dependências básicas do sistema (sem sudo)
     - name: Install system dependencies
       run: |
-        mkdir -p $HOME/.local/bin
-        curl -LO https://raw.githubusercontent.com/git/git/master/contrib/completion/git-prompt.sh || true
-        apt-get update || true
-        apt-get install -y --no-install-recommends unzip wget curl git tar zip openjdk-17-jdk build-essential || true
+        sudo apt-get update
+        sudo apt-get install -y python3 python3-venv python3-pip git unzip wget curl zip openjdk-17-jdk tar build-essential
 
-    # 2️⃣ Configurar Python
-    - name: Set up Python 3.13
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.13'
-
-    # 3️⃣ Instalar Buildozer e dependências Python
-    - name: Install Python dependencies
+    - name: Setup Python virtual environment
       run: |
-        python -m pip install --upgrade pip setuptools wheel
-        pip install buildozer==1.5.0 python-for-android==2023.9.16 cython kivy flask websocket-client
+        python3 -m venv venv
+        source venv/bin/activate
+        pip install --upgrade pip setuptools wheel
 
-    # 4️⃣ Baixar e configurar Android SDK cmdline-tools
-    - name: Install Android SDK cmdline-tools
+    - name: Install Buildozer and Python-for-Android
       run: |
-        mkdir -p $ANDROID_SDK_ROOT/cmdline-tools
+        source venv/bin/activate
+        pip install buildozer==1.5.0 python-for-android cython
+
+    - name: Setup Android SDK, NDK, and Build-tools
+      run: |
+        mkdir -p $ANDROID_SDK_ROOT
         cd $ANDROID_SDK_ROOT
-        wget -O cmdline-tools.zip https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip
-        unzip -q cmdline-tools.zip
-        mv cmdline-tools cmdline-tools/latest
-        yes | $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager --licenses
+        wget https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip -O cmdline-tools.zip
+        unzip cmdline-tools.zip -d cmdline-tools
+        rm cmdline-tools.zip
+        mkdir -p cmdline-tools/latest
+        mv cmdline-tools/cmdline-tools/* cmdline-tools/latest/
+        # Instala build-tools, platform-tools, plataformas e NDK
+        yes | cmdline-tools/latest/bin/sdkmanager --sdk_root=$ANDROID_SDK_ROOT \
+          "platform-tools" \
+          "platforms;android-33" \
+          "build-tools;33.0.2" \
+          "ndk;25.2.9519653"
 
-    # 5️⃣ Instalar Build-tools, Platform-tools e Android platform
-    - name: Install build tools and platforms
+    - name: Accept Android licenses
+      run: yes | cmdline-tools/latest/bin/sdkmanager --licenses
+
+    - name: Check aidl and other executables
       run: |
-        yes | $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager "platform-tools" "platforms;android-33" "build-tools;34.0.0"
+        AIDL="$ANDROID_SDK_ROOT/build-tools/33.0.2/aidl"
+        if [ ! -f "$AIDL" ]; then
+          echo "ERROR: aidl not found!"
+          exit 1
+        fi
+        chmod +x "$AIDL"
+        echo "aidl found and executable"
 
-    # 6️⃣ Build APK usando Buildozer
-    - name: Build APK
+    - name: Build APK (multi-arch)
       run: |
-        buildozer android debug
-        ls -lh bin/
+        source venv/bin/activate
+        # Limpa builds anteriores
+        buildozer android clean
+        # Build para armv7 e arm64
+        buildozer android debug deploy run
 
-    # 7️⃣ Upload do APK gerado como artifact
-    - name: Upload APK
+    - name: Upload APK artifact
       uses: actions/upload-artifact@v4
       with:
-        name: APK
+        name: apk
         path: bin/*.apk
