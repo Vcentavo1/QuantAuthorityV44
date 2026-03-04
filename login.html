@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Login - Quant Authority Trading</title>
+<style>
+body{background:#0b1220;color:#e2e8f0;font-family:Arial;margin:0;}
+.container{max-width:400px;margin:80px auto;padding:30px;background:#111827;border-radius:12px;box-shadow:0 0 15px rgba(0,0,0,0.5);}
+h2{text-align:center;color:#38bdf8;}
+input{width:100%;padding:12px;margin:8px 0;border-radius:8px;border:none;}
+button{width:100%;padding:12px;border-radius:8px;border:none;background:#2563eb;color:white;font-size:16px;cursor:pointer;}
+.error{color:#ef4444;text-align:center;}
+</style>
+</head>
+<body>
+<div class="container">
+<h2>Login</h2>
+<form method="post">
+<input type="text" name="user" placeholder="Número/ID" required>
+<input type="password" name="senha" placeholder="Senha" required>
+<button type="submit">Entrar</button>
+</form>
+{% if error %}<p class="error">{{error}}</p>{% endif %}
+<p style="text-align:center;margin-top:10px;">📩 Assistência: tvxsystem@gmail.com</p>
+</div>
+</body>
+</html>

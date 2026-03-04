@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Quant Authority Trading</title>
+</head>
+<body>
+<h1>Quant Authority Trading 🌐📉📈</h1>
+<p>Selecione o ativo:</p>
+<form id="form">
+<select name="symbols" multiple>
+{% for a in assets %}
+  <option value="{{a.symbol}}">{{a.display}}</option>
+{% endfor %}
+</select>
+<button type="button" onclick="start()">Analisar</button>
+<button type="button" onclick="clearSignals()">Limpar</button>
+</form>
+<div id="stats">Carregando estatísticas...</div>
+<script>
+async function start(){
+  let symbols = Array.from(document.querySelector('select').selectedOptions).map(o=>o.value);
+  await fetch("/start", {method:"POST", headers:{'Content-Type':'application/json'}, body:JSON.stringify({symbols,granularity:60})});
+}
+async function clearSignals(){
+  await fetch("/clear",{method:"POST"});
+}
+</script>
+</body>
+</html>
