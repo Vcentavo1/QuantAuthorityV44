@@ -4,23 +4,36 @@ on:
   push:
     branches:
       - main
+  workflow_dispatch:
 
 jobs:
   build:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
+      # 1️⃣ Pegar o código do repositório
+      - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Build with Buildozer
-        uses: ArtemSBulgakov/buildozer-action@v1
+      # 2️⃣ Configurar Python
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      # 3️⃣ Build Android APK com Buildozer
+      - name: Build APK
+        uses: ArtemSBulgakov/buildozer-action@v2
         with:
           workdir: .
           buildozer_version: stable
+          command: android debug
+          requirements: python3,kivy,flask,websocket-client
+          android_permissions: INTERNET
 
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
+      # 4️⃣ Upload do APK gerado como artifact
+      - name: Upload APK Artifact
+        uses: actions/upload-artifact@v3
         with:
-          name: quantauthority-apk
-          path: bin/*.apk
+          name: QuantAuthorityV44-APK
+          path: ./.buildozer/android/platform/build-armeabi-v7a/dists/quantauthority/bin/*.apk
