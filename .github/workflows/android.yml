@@ -9,36 +9,51 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      ANDROID_HOME: ${{ github.workspace }}/android-sdk
+      ANDROID_NDK_HOME: ${{ github.workspace }}/android-ndk
 
     steps:
-      # 1️⃣ Pegar o código do repositório
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      # 2️⃣ Configurar Python
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.11'
 
-      # 3️⃣ Instalar dependências do sistema
-      - name: Install dependencies
+      - name: Install system dependencies
         run: |
           sudo apt update
-          sudo apt install -y git python3-pip python3-venv openjdk-17-jdk unzip zip wget
+          sudo apt install -y git wget unzip zip openjdk-17-jdk build-essential
 
-      # 4️⃣ Instalar Buildozer e Python-for-Android
-      - name: Install Buildozer & p4a
+      - name: Install Buildozer, Python-for-Android & Cython
         run: |
           python3 -m pip install --upgrade pip setuptools wheel
-          python3 -m pip install buildozer python-for-android
+          python3 -m pip install buildozer python-for-android cython
 
-      # 5️⃣ Build APK
+      - name: Install Android SDK Command-line Tools
+        run: |
+          mkdir -p $ANDROID_HOME
+          cd $ANDROID_HOME
+          wget https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip -O cmdline-tools.zip
+          unzip cmdline-tools.zip
+          mkdir -p cmdline-tools/latest
+          mv cmdline-tools/* cmdline-tools/latest/
+          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses
+          $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "platform-tools" "platforms;android-33" "build-tools;34.0.0"
+
+      - name: Install Android NDK
+        run: |
+          mkdir -p $ANDROID_NDK_HOME
+          wget https://dl.google.com/android/repository/android-ndk-r25b-linux.zip
+          unzip android-ndk-r25b-linux.zip -d $ANDROID_NDK_HOME
+          mv $ANDROID_NDK_HOME/android-ndk-r25b/* $ANDROID_NDK_HOME/
+
       - name: Build APK
         run: |
           buildozer android debug
 
-      # 6️⃣ Upload do APK gerado como artifact
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
